@@ -1,0 +1,98 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          reindexer
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start reindexer_server at boot time
+# Description:       Enable reindexer_server provided by daemon.
+### END INIT INFO
+# chkconfig: 2345 95 05
+
+service="reindexer_server"
+pid_file="/var/run/reindexer/$service.pid"
+config_file="/etc/reindexer.conf"
+
+cmd="${CMAKE_INSTALL_PREFIX}/bin/$service -c $config_file -d --pidfile=$pid_file"
+
+stop_attempts=40
+stop_timeout_sec=5
+
+# Add user, if not present
+if ! getent passwd reindexer >/dev/null 2>&1; then
+    adduser --system --no-create-home reindexer
+fi
+# Copy default config if not present
+[ ! -f $config_file ] && cp $config_file.pkg $config_file
+# Set tcmalloc env var if profiling is enabled
+grep pprof $config_file 2>/dev/null | grep true >/dev/null 2>&1
+[ $? -eq 0 ] && export TCMALLOC_SAMPLE_PARAMETER=524288
+
+get_pid() {
+    cat "$pid_file"
+}
+
+is_running() {
+    [ -f "$pid_file" ] && ps -p `get_pid` > /dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        if ! is_running; then
+            echo "Starting $service"
+            $cmd
+        else
+            echo "Service $service is already running"
+        fi
+    ;;
+    stop)
+        if is_running; then
+            echo -n "Stopping $service.."
+            kill `get_pid`
+
+            i=0
+            while [ $i -lt $stop_attempts ]
+            do
+                if ! is_running; then
+                    break
+                fi
+
+                echo -n "."
+                sleep $stop_timeout_sec
+                i=`expr $i + 1`
+            done
+
+            if is_running; then
+                echo "Not stopped; Halting.."
+                kill -9 `get_pid`
+            fi
+
+            echo "Stopped"
+        else
+            echo "Not running"
+        fi
+    ;;
+    restart)
+        $0 stop
+        if is_running; then
+            echo "Unable to stop, will not attempt to start"
+            exit 1
+        fi
+        $0 start
+    ;;
+    status)
+        if is_running; then
+            echo "Running"
+        else
+            echo "Stopped"
+            exit 1
+        fi
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+    ;;
+esac
+
+exit 0

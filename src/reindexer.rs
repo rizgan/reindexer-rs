@@ -16,7 +16,7 @@ impl Reindexer {
         }
     }
 
-    pub fn connet(&self, dsn: &str) {
+    pub fn connet(&self, dsn: &str) -> bool {
         let dsn = CString::new(dsn).unwrap();
         unsafe { ffi::re_connect(self.inner, dsn.as_ptr()) }
     }

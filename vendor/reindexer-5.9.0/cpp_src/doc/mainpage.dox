@@ -1,0 +1,91 @@
+/**
+@mainpage Welcome to Reindexer documentation!
+@section Reindexer
+# Reindexer
+Reindexer is an embeddable, in-memory, document-oriented database with a high-level Query builder interface.
+
+Reindexer's goal is to provide fast search with complex queries. We at Restream weren't happy with Elasticsearch and created Reindexer as a more performant alternative.
+
+The core is written in C++ and the application level API is in Go. 
+
+## Features
+
+Key features:
+
+- Sortable indices 
+- Aggregation queries
+- Indices on array fields
+- Complex primary keys
+- Composite indices
+- Join operations
+- Full-text search
+- Up to 64 indices for one namespace
+- ORM-like query interface 
+- SQL queries 
+
+## Essential C++ API reference
+
+- \ref reindexer::Reindexer - Reindexer database interface
+- \ref reindexer::Query - Database query builder
+- \ref reindexer::QueryResults - Query results acquiring interface
+- \ref reindexer::Item - Data manipulation interface
+
+## Basic sample of usage
+
+````C
+#include <iostream>
+#include "reindexer.h"
+
+using namespace reindexer;
+
+int main() {
+	//// Initialize database
+	Reindexer db;
+	//// Create namespace and add index
+	db.OpenNamespace("mytable");
+	db.AddIndex("mytable", {"id", "hash", "int", IndexOpts().PK()});
+	db.AddIndex("mytable", {"genre", "hash", "string", IndexOpts()});
+
+	//// Insert some data in JSON format
+	Item item = db.NewItem("mytable");
+	std::string data = "{\"id\":100,\"name\":\"Some name\" \"genre\":\"some genre\"}";
+	item.FromJSON(data);
+	db.Upsert("mytable", item);
+
+	//// Build & execute query
+	auto query = Query("mytable").Where("id", CondEq, 100);
+	QueryResults results;
+	Error err = db.Select(query, results);
+	if (!err.ok()) {
+		std::cerr << "Select error" << err.what();
+		return -1;
+	}
+
+	//  // Fetch and print results
+	for (auto rowIt : results) {
+		Item item = rowIt.GetItem();
+		//  // Get complete JSON
+		std::cout << "JSON: " << item.GetJSON() << std::endl;
+
+		//// OR Iterate indexed fields
+		std::cout << "Fields: ";
+		for (int field = 1; field < item.NumFields(); field++) {
+			std::cout << item[field].Name() << "=" << item[field].as<std::string>() << "; ";
+		}
+		std::cout << std::endl;
+
+		//// OR Get indexed field by name
+		std::cout << "Genre: " << item["genre"].as<std::string>() << std::endl;
+
+		return 0;
+	}
+}
+````
+### Compile sample:
+
+````bash
+g++ cli.cc -L reindexer/cpp_src/build -I reindexer/cpp_src -I reindexer/cpp_src/core -std=c++11 -lreindexer -lleveldb -lpthread
+````
+
+*/
+

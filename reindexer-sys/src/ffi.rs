@@ -64,7 +64,7 @@ extern "C" {
     /// **** ///
     pub fn re_new() -> *mut Reindexer;
     pub fn re_destroy(db: *mut Reindexer) -> ();
-    pub fn re_connect(db: *mut Reindexer, dsn: *const c_char) -> ();
+    pub fn re_connect(db: *mut Reindexer, dsn: *const c_char) -> bool;
     pub fn re_open_namespace(db: *mut Reindexer, ns: *const c_char) -> bool;
 
     pub fn re_add_index(

@@ -1,0 +1,13 @@
+# ASM files
+*/asm/*.S
+# Vendored
+*yaml.cc
+# Generated stemmer files
+*/libstemmer/*
+*/libstemmer/*
+# Murmurhash
+*/murmurhash/MurmurHash3.cc
+# Backtrace library
+*/libbacktrace/*
+# Faiss
+*/faiss/*

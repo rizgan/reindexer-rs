@@ -1,0 +1,26 @@
+#!/bin/sh
+
+if ! getent passwd reindexer >/dev/null 2>&1; then
+    adduser --system --no-create-home reindexer
+fi
+
+if [ ! -d /var/lib/reindexer ]; then
+    mkdir -p /var/lib/reindexer
+    chown reindexer:reindexer /var/lib/reindexer
+fi
+
+if [ ! -d /var/log/reindexer ]; then
+    mkdir -p /var/log/reindexer
+    chown reindexer:reindexer /var/log/reindexer
+fi
+
+if [ ! -d /var/run/reindexer ]; then
+    mkdir -p /var/run/reindexer
+    chown reindexer:reindexer /var/run/reindexer
+fi
+
+if [ ! -f /etc/reindexer.conf ]; then
+    cp /etc/reindexer.conf.pkg /etc/reindexer.conf
+fi
+
+# chkconfig --add reindexer

@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message conversion_namespace {
+sint64 id = 2;
+repeated sint64 numbers = 1 [packed=true];
+}

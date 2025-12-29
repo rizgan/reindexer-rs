@@ -1,0 +1,10 @@
+# FindSnappy.cmake
+# Finds Snappy library
+
+set(SNAPPY_FOUND TRUE)
+set(Snappy_FOUND TRUE)
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_INCLUDE_DIR}" CACHE PATH "Snappy include directory")
+set(SNAPPY_LIBRARIES "${SNAPPY_LIBRARY}" CACHE FILEPATH "Snappy library")
+set(SNAPPY_LIBRARY "${SNAPPY_LIBRARY}" CACHE FILEPATH "Snappy library")
+
+mark_as_advanced(SNAPPY_INCLUDE_DIR SNAPPY_LIBRARIES SNAPPY_LIBRARY)
