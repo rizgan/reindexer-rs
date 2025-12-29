@@ -1,105 +1,90 @@
 # reindexer-rs
-Reindexer library for Rust
+Rust bindings for Reindexer 5.9 with embedded (builtin) engine and optional cproto client.
 
-# Installation (refer to [installation](https://github.com/Restream/reindexer/blob/master/cpp_src/readme.md#installation))
+## Requirements (Windows)
+- MSVC toolchain (VS Build Tools / VS 2022)
+- CMake and Ninja in `PATH`
+- Rust toolchain `x86_64-pc-windows-msvc`
+All native deps (Reindexer, LevelDB, Snappy) собираются из вендора автоматически.
+
+## Подключение в свой проект
+Через Git:
 ```
-go get github.com/restream/reindexer
-sudo apt-get install libgoogle-perftools-dev
-cd $GOPATH/src/github.com/restream/reindexer
-sudo ./dependencies.sh
-mkdir -p build && cd build
-cmake ..
-make -j4
-# optional: step for build swagger documentation
-make swagger
-# optional: step for build web pages of Reindexer's face
-make face
-# install to system
-sudo make install
+[dependencies]
+reindexer = { git = "https://github.com/coinrust/reindexer-rs", branch = "master" }
 ```
-
-# Build
+Локально (если репо рядом):
 ```
-# Build
-$ cargo build
-
-# Build examples
-$ cargo build --examples
-
-# Run hello.rs
-$ cargo run --example hello
+[dependencies]
+reindexer = { path = "../reindexer-rs" }
 ```
 
-# Example (builtin)
-```rust,editable
-// builtin
-let db = Reindexer::new();
+## Сборка этого репо
+```
+cargo build --release
+cargo run --release --example hello
+```
+Бинарь примера: `target/release/examples/hello.exe`.
 
-db.connet("builtin:///tmp/reindex/testdb");
+## Встраиваемый режим (embedded)
+Работает без внешнего сервера, хранит данные по DSN `builtin://<путь>`.
+```rust
+use reindexer_rs::reindexer::Reindexer;
 
-let ns = "items";
-let ok = db.open_namespace(ns);
-assert!(ok);
+fn main() {
+    let db = Reindexer::new();
 
-let ok = db.add_index(ns, "id", "", "hash", "int", false);
-assert!(ok);
+    // каталог для данных
+    let _ = std::fs::create_dir_all("./data/reindex");
+    let ok = db.connet("builtin://./data/reindex");
+    assert!(ok);
 
-let ok = db.add_index(ns, "fk_id", "", "hash", "int", false);
-assert!(ok);
+    let ns = "items";
+    let ok = db.open_namespace(ns);
+    assert!(ok);
 
-let ok = db.add_index(ns, "id+fk_id", "id,fk_id", "tree", "composite", true);
-assert!(ok);
+    // одиночные индексы требуют явных json_paths
+    let _ = db.add_index(ns, "id", "id", "hash", "int", true);   // PK
+    let _ = db.add_index(ns, "fk_id", "fk_id", "hash", "int", false);
+    let _ = db.add_index(ns, "id+fk_id", "id,fk_id", "tree", "composite", false);
 
-let item = r#"{"id":1234, "value" : "value"}"#;
-let ok = db.upsert(ns, item);
-assert!(ok);
+    let ok = db.upsert(ns, r#"{"id":1234,"value":"value"}"#);
+    assert!(ok);
 
-let item = r#"{"id":1235, "value" : "value"}"#;
-let ok = db.upsert(ns, item);
-assert!(ok);
-
-let (_, ok) = db.update_sql("UPDATE items SET ext = 'hello' WHERE id = 1235");
-assert!(ok);
-
-let (qr, ok) = db.select("SELECT * FROM items WHERE id = 1235");
-assert!(ok);
-
-let mut n = 0;
-for s in qr.iter() {
-    println!("item: {}", s);
-    n += 1;
-    if n > 10 {
-        break;
+    let (qr, ok) = db.select("SELECT * FROM items");
+    assert!(ok);
+    for s in qr.iter() {
+        println!("{}", s);
     }
 }
 ```
 
-# Example (cproto)
-```rust,editable
-// cproto
-let db = CReindexer::new();
-let ok = db.connect("cproto://127.0.0.1:6534/test_db");
-assert!(ok);
+## Клиентский режим (cproto)
+Требуется запущенный reindexer-server и DSN вида `cproto://host:port/db`.
+```rust
+use reindexer_rs::creindexer::CReindexer;
 
-let ns = "items";
-let ok = db.open_namespace(ns, true);
-assert!(ok);
+fn main() {
+    let db = CReindexer::new();
+    let ok = db.connect("cproto://127.0.0.1:6534/test_db");
+    assert!(ok);
 
-let ok = db.add_index(ns, "id", "hash", "int", true);
-assert!(ok);
+    let ns = "items";
+    let _ = db.open_namespace(ns, true);
+    let _ = db.add_index(ns, "id", "hash", "int", true);
 
-let item = r#"{"id":1234, "value" : "value"}"#;
-let ok = db.upsert(ns, item);
-assert!(ok);
+    let _ = db.upsert(ns, r#"{"id":1,"value":"hello"}"#);
 
-let item = r#"{"id":1235, "value" : "value"}"#;
-let ok = db.upsert(ns, item);
-assert!(ok);
-
-let (qr, ok) = db.select("SELECT * FROM items");
-assert!(ok);
-
-for s in qr.iter() {
-    println!("item: {}", s);
+    let (qr, ok) = db.select("SELECT * FROM items");
+    assert!(ok);
+    for s in qr.iter() {
+        println!("{}", s);
+    }
 }
 ```
+
+## Быстрый тест
+```
+cargo run --release --example hello
+```
+Embedded-путь в примере: `builtin://./target/reindex_data`. Если хотите протестировать cproto, задайте `REINDEXER_CPROTO_DSN` или поправьте DSN в коде и поднимите сервер.
